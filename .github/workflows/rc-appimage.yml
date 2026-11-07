@@ -1,0 +1,45 @@
+# Fork-only: build a test AppImage of the current fork/main without publishing a
+# release. Triggered by a push to this branch (or manually). Not meant for upstream.
+name: RC AppImage
+
+on:
+  push:
+    branches: [rc-appimage-20261107]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  # Names the artifact; the compiled binary still reports Cargo.toml's version.
+  SOLIDCRAFT_VERSION: 0.40.0-rc.2.main.20261107
+
+jobs:
+  appimage:
+    name: Linux x86_64 AppImage
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends desktop-file-utils appstream zsync
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: rc-appimage-x86_64
+      - name: Build and package (AppImage only)
+        run: packaging/linux/package.sh --formats "appimage"
+      - name: Check the AppImage
+        run: |
+          ls -l dist/release/
+          chmod +x dist/release/*.AppImage
+          APPIMAGE_EXTRACT_AND_RUN=1 dist/release/*.AppImage --version
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rc-appimage-x86_64
+          path: dist/release/*.AppImage*
+          if-no-files-found: error
