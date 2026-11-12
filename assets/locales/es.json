@@ -2704,6 +2704,8 @@
   "prefs.invert_curved_roll_arrows_note": "Las dos flechas curvas en la esquina del cubo giran la vista en el plano de la pantalla. Activado: la flecha horaria gira antihoraria y la antihoraria gira horaria. Desactivado: cada flecha gira la vista hacia donde se curva.",
   "prefs.invert_navigator_arrows": "Invertir las flechas de rotación del cubo de vista",
   "prefs.invert_navigator_arrows_note": "Las flechas alrededor del cubo orbitan la cámara hacia donde apuntan, como en Fusion e Inventor: la flecha de la izquierda apunta a la derecha y gira la cámara a la derecha. Desactivado: una flecha rota el cubo hacia el lado en que está, así la flecha izquierda gira la cámara a la izquierda. Las flechas de giro curvo no se ven afectadas.",
+  "prefs.keep_print_faces": "Conservar caras de impresión",
+  "prefs.keep_print_faces_tip": "Activado: la cara de impresión de cada cuerpo se tiñe siempre en la vista y se guarda en el diseño. Desactivado: solo se tiñe mientras Enviar al laminador está abierto, y los diseños se guardan y se abren sin caras de impresión.",
   "prefs.keep_unsaved_also_asks": "Preguntar igualmente al cerrar la pestaña",
   "prefs.keep_unsaved_also_asks_tip": "Con esto desactivado, la pestaña se cierra sin el cuadro del navegador en cuanto la copia de cada diseño sin guardar está al día.",
   "prefs.keep_unsaved_in_browser": "Conservar el trabajo sin guardar en este navegador",
