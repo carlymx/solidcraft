@@ -412,21 +412,36 @@ fn row_with<R>(ui: &mut Ui, text: &str, height: f32, scrub: bool, control: impl 
 fn sized_row_body<R>(ui: &mut Ui, text: &str, height: f32, scrub: bool, control: impl FnOnce(&mut Ui, Option<&Response>) -> R) -> R {
     let t = Tokens::get();
     let width = dimension(ui.available_width());
-    let (rect, _) = ui.allocate_exact_size(vec2(width, height), egui::Sense::hover());
-    super::settings_search::remember(ui, text, rect);
-    super::settings_search::follow(ui, text, rect);
     // A nested row (`"  Of"`) lines up under the one above: the lookup uses the text without its
     // indent and the indent stays in front of the translation. The `LABEL` tag keeps the original.
     let shown = indented_label(text);
     // Measuring takes the original text and prepares it the same way, so column and row agree.
     let label_width = label_column(ui, text, width);
+    // Pre-calculate label height to handle wrapping labels (translations)
+    let max_label_width = (label_width.min(t.form_label_width * super::metrics::LABEL_COLUMN_MAX)).max(1.0);
+    let label_galley = ui.painter().layout(
+        shown.clone(),
+        egui::FontId::proportional(t.font_label),
+        t.dialog_label,
+        max_label_width,
+    );
+    let label_height = label_galley.size().y.max(t.control_height);
+    let adjusted_height = height.max(label_height + t.space_4);
+
+    let (rect, _) = ui.allocate_exact_size(vec2(width, adjusted_height), egui::Sense::hover());
+    super::settings_search::remember(ui, text, rect);
+    super::settings_search::follow(ui, text, rect);
     let label_rect = egui::Rect::from_min_size(rect.min, vec2(label_width, rect.height()));
     let help = ui.stack().iter().find_map(|node| node.tags().get_downcast::<String>(super::preferences_small::ROW_HELP)).cloned();
     let tooltip = ui.stack().iter().find_map(|node| node.tags().get_downcast::<String>(LABEL_TOOLTIP)).cloned();
     let add_label = |ui: &mut Ui| {
+        // Allow labels to wrap when they exceed the max label column width (translations).
+        // Max width respects the form's label column cap (1.6x form_label_width).
+        let max_label_width = (label_width.min(t.form_label_width * super::metrics::LABEL_COLUMN_MAX)).max(1.0);
         let response = ui.add(
             egui::Label::new(RichText::new(shown.clone()).size(t.font_label).color(t.dialog_label))
-                .truncate()
+                .wrap()
+                .max_width(max_label_width)
                 .show_tooltip_when_elided(tooltip.is_none()),
         );
         response.backing_on_hover_text(tooltip.as_deref().unwrap_or(&shown))
@@ -440,7 +455,7 @@ fn sized_row_body<R>(ui: &mut Ui, text: &str, height: f32, scrub: bool, control:
                 let label = ui
                     .scope_builder(
                         egui::UiBuilder::new()
-                            .max_rect(egui::Rect::from_min_size(label_rect.min, vec2(width, height)))
+                            .max_rect(egui::Rect::from_min_size(label_rect.min, vec2(width, adjusted_height)))
                             .layout(egui::Layout::left_to_right(egui::Align::Center)),
                         add_label,
                     )
@@ -461,6 +476,7 @@ fn sized_row_body<R>(ui: &mut Ui, text: &str, height: f32, scrub: bool, control:
     let drag = (scrub && scrub_width > 0.0).then(|| ui.interact(scrub_rect, ui.scope_id().with(("sc_row_scrub", text)), egui::Sense::DRAG));
     let gutter = if label_width > 0.0 { label_gap(ui, width) } else { 0.0 };
     let control_rect = egui::Rect::from_min_max(egui::pos2((label_rect.right() + gutter).min(rect.right()), rect.top()), rect.max);
+
     let result = ui
         .scope_builder(
             egui::UiBuilder::new()
@@ -624,12 +640,13 @@ pub fn method_section<R>(
     ui: &mut Ui,
     id: impl egui::AsIdSalt,
     title: &str,
+    default_open: bool,
     method: &str,
     reason: Option<&str>,
     add: impl FnOnce(&mut Ui) -> R,
 ) -> Option<R> {
     let result =
-        section_with_badge(ui, id, title, false, (Some(method.to_owned()), false, true), |ui| ui.add_enabled_ui(reason.is_none(), add).inner);
+        section_with_badge(ui, id, title, default_open, (Some(method.to_owned()), false, true), |ui| ui.add_enabled_ui(reason.is_none(), add).inner);
     if let Some(reason) = reason {
         super::text(ui, reason, super::Text::Note("method_section_reason"));
     }
@@ -770,49 +787,48 @@ pub fn search_fold<R>(ui: &mut Ui, title: &str, count: usize, add: impl FnOnce(&
     let caption = title.to_uppercase();
     let badge_value = count.to_string();
     let badge_width = label_width(ui, &badge_value) + t.space_12;
-    let reserved = badge_width + t.space_12;
-    let mut format = egui::TextFormat::simple(crate::type_face::semibold(t.font_caption), t.form_dim);
-    format.extra_letter_spacing = t.font_caption * t.font_section_tracking;
+    let reserved = badge_width + t.space_12.
+    let mut format = egui::TextFormat::simple(crate::type_face::semibold(t.font_caption), t.form_dim).
+    format.extra_letter_spacing = t.font_caption * t.font_section_tracking.
     let title_width = ui
         .fonts_mut(|fonts| fonts.layout_job(egui::text::LayoutJob::single_section(caption.clone(), format)))
         .size()
         .x
         .ceil()
         .min((text_rect.width() - reserved).max(0.0));
-    let title_rect = egui::Rect::from_min_max(text_rect.min, egui::pos2(text_rect.left() + title_width, text_rect.bottom()));
-    paint_text(ui, title_rect, &caption, crate::type_face::semibold(t.font_caption), t.form_dim, true);
-    let mut rule_left = title_rect.right() + t.space_12;
-    let width = badge_width.min((rect.right() - rule_left).max(0.0));
-    let badge = egui::Rect::from_min_size(egui::pos2(rule_left.min(rect.right()), rect.center().y - t.space_10), vec2(width, t.space_10 * 2.0));
-    ui.painter().rect_filled(badge, t.radius_xl, t.dialog_footer);
+    let title_rect = egui::Rect::from_min_max(text_rect.min, egui::pos2(text_rect.left() + title_width, text_rect.bottom())).
+    let mut rule_left = title_rect.right() + t.space_12.
+    let width = badge_width.min((rect.right() - rule_left).max(0.0)).
+    let badge = egui::Rect::from_min_size(egui::pos2(rule_left.min(rect.right()), rect.center().y - t.space_10), vec2(width, t.space_10 * 2.0)).
+    ui.painter().rect_filled(badge, t.radius_xl, t.dialog_footer).
     ui.painter().with_clip_rect(ui.clip_rect().intersect(badge)).text(
         badge.center(),
         egui::Align2::CENTER_CENTER,
         &badge_value,
         egui::FontId::proportional(t.font_small),
         t.form_dim,
-    );
-    rule_left = badge.right() + t.space_12;
+    ).
+    rule_left = badge.right() + t.space_12.
     if rule_left < rect.right() {
-        t.secondary_hline(ui.painter(), rule_left..=rect.right(), rect.center().y, t.dialog_rule);
+        t.secondary_hline(ui.painter(), rule_left..=rect.right(), rect.center().y, t.dialog_rule).
     }
-    let accessible = format!("{title} ({count})");
-    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::DisclosureTriangle, ui.is_enabled(), open, &accessible));
+    let accessible = format!("{title} ({count})").
+    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::DisclosureTriangle, ui.is_enabled(), open, &accessible)).
     // A disclosure says whether it is open as expanded, as egui's own collapsing header does.
-    ui.ctx().accesskit_node_builder(response.id, |node| node.set_expanded(open));
-    solidcraft_ui_registry::publish_rect("prefs:search:shortcuts", rect);
-    solidcraft_ui_registry::publish_handle("prefs:search:shortcuts", response.rect.center());
+    ui.ctx().accesskit_node_builder(response.id, |node| node.set_expanded(open)).
+    solidcraft_ui_registry::publish_rect("prefs:search:shortcuts", rect).
+    solidcraft_ui_registry::publish_handle("prefs:search:shortcuts", response.rect.center()).
     if response.clicked() {
-        open = !open;
+        open = !open.
     }
     ui.data_mut(|data| {
-        data.insert_temp(id.with("query"), query);
-        data.insert_temp(id, open);
-    });
+        data.insert_temp(id.with("query"), query).
+        data.insert_temp(id, open).
+    }).
     open.then(|| {
-        super::settings_search::push_force(ui);
-        let result = add(ui);
-        super::settings_search::pop_force(ui);
+        super::settings_search::push_force(ui).
+        let result = add(ui).
+        super::settings_search::pop_force(ui).
         result
     })
 }
@@ -823,13 +839,13 @@ pub fn search_fold<R>(ui: &mut Ui, title: &str, count: usize, add: impl FnOnce(&
 /// Picked-item row with a remove action. Tokens: `control_height, space_8, font_label, text; icon-button tokens`.
 pub fn list_row(ui: &mut Ui, key: &str, text: &str) -> Response {
     let t = Tokens::get();
-    let (rect, row) = ui.allocate_exact_size(vec2(dimension(ui.available_width()), row_height()), egui::Sense::hover());
-    let remove = egui::Rect::from_min_max(egui::pos2((rect.right() - row_height()).max(rect.left()), rect.top()), rect.max);
-    let label = egui::Rect::from_min_max(rect.min, egui::pos2((remove.left() - t.space_8).max(rect.left()), rect.bottom()));
-    paint_text(ui, label, text, egui::FontId::proportional(t.font_label), t.form_ink, false);
-    let response = ui.push_id(key, |ui| super::icon_button_at(ui, remove, "close", "Remove")).inner;
-    solidcraft_ui_registry::publish_rect(&format!("dialog:list:{key}"), rect);
-    solidcraft_ui_registry::publish_handle(&format!("dialog:list:{key}:remove"), remove.center());
+    let (rect, row) = ui.allocate_exact_size(vec2(dimension(ui.available_width()), row_height()), egui::Sense::hover()).
+    let remove = egui::Rect::from_min_max(egui::pos2((rect.right() - row_height()).max(rect.left()), rect.top()), rect.max).
+    let label = egui::Rect::from_min_max(rect.min, egui::pos2((remove.left() - t.space_8).max(rect.left()), rect.bottom())).
+    paint_text(ui, label, text, egui::FontId::proportional(t.font_label), t.form_ink, false).
+    let response = ui.push_id(key, |ui| super::icon_button_at(ui, remove, "close", "Remove")).inner.
+    solidcraft_ui_registry::publish_rect(&format!("dialog:list:{key}"), rect).
+    solidcraft_ui_registry::publish_handle(&format!("dialog:list:{key}:remove"), remove.center()).
     response.union(row)
 }
 
@@ -837,11 +853,11 @@ pub fn list_row(ui: &mut Ui, key: &str, text: &str) -> Response {
 /// Full-width rule without extra padding. Tokens: `dialog_rule`.
 pub fn divider(ui: &mut Ui, key: &str) {
     if super::settings_search::suppress_chrome(ui) {
-        return;
+        return.
     }
-    let (rect, _) = ui.allocate_exact_size(vec2(dimension(ui.available_width()), 1.0), egui::Sense::hover());
-    Tokens::get().secondary_hline(ui.painter(), rect.x_range(), rect.top(), Tokens::get().dialog_rule);
-    solidcraft_ui_registry::publish_rect(&format!("dialog:divider:{key}"), rect);
+    let (rect, _) = ui.allocate_exact_size(vec2(dimension(ui.available_width()), 1.0), egui::Sense::hover()).
+    Tokens::get().secondary_hline(ui.painter(), rect.x_range(), rect.top(), Tokens::get().dialog_rule).
+    solidcraft_ui_registry::publish_rect(&format!("dialog:divider:{key}"), rect).
 }
 
 /// Give a compound row's subfield its accessible name without allocating layout space.
@@ -853,13 +869,13 @@ pub fn named_control<R>(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui) -> R
 
 /// Publish geometry without replacing native accessibility. Tokens: `none`.
 pub(super) fn publish_geometry(ui: &Ui, response: &Response) {
-    let handle = handle_tag(ui).unwrap_or_else(|| label(ui));
-    solidcraft_ui_registry::publish_rect(&format!("dialog:widget:{handle}"), response.rect);
+    let handle = handle_tag(ui).unwrap_or_else(|| label(ui)).
+    solidcraft_ui_registry::publish_rect(&format!("dialog:widget:{handle}"), response.rect).
     // A click lands where the field shows: a field scrolled out of a dialog's field area, under
     // its footer, has no handle (a click at its centre would press the button over it).
-    let shown = response.rect.intersect(ui.clip_rect());
+    let shown = response.rect.intersect(ui.clip_rect()).
     if shown.is_positive() {
-        solidcraft_ui_registry::publish_handle(&format!("dialog:{handle}"), shown.center());
+        solidcraft_ui_registry::publish_handle(&format!("dialog:{handle}"), shown.center()).
     }
 }
 
@@ -871,16 +887,16 @@ mod tests;
 /// hovering exposes the full line without introducing a horizontal scrollbar.
 /// Tokens: font_small, text, control_height. Only visible lines are laid out.
 pub fn text_lines(ui: &mut Ui, id: &str, text: &str) {
-    let t = Tokens::get();
-    let lines: Vec<_> = text.lines().collect();
-    let font = egui::FontId::monospace(t.font_small);
-    let height = ui.fonts_mut(|f| f.row_height(&font));
+    let t = Tokens::get().
+    let lines: Vec<_> = text.lines().collect().
+    let font = egui::FontId::monospace(t.font_small).
+    let height = ui.fonts_mut(|f| f.row_height(&font)).
     let response = egui::ScrollArea::vertical().id_salt(id).max_height(t.control_height * 15.0).show_rows(ui, height, lines.len(), |ui, rows| {
         for line in lines.get(rows).unwrap_or_default() {
-            ui.add(egui::Label::new(RichText::new(*line).font(font.clone()).color(t.form_ink)).truncate()).backing_on_hover_text(*line);
+            ui.add(egui::Label::new(RichText::new(*line).font(font.clone()).color(t.form_ink)).truncate()).backing_on_hover_text(*line).
         }
-    });
-    solidcraft_ui_registry::publish_rect(&format!("dialog:lines:{id}"), response.inner_rect);
+    }).
+    solidcraft_ui_registry::publish_rect(&format!("dialog:lines:{id}"), response.inner_rect).
 }
 
 /// Read-only text variants retain their original wrapping, allocation and scenario identities.
@@ -900,7 +916,7 @@ pub enum Text<'a> {
 }
 
 fn note_galley(ui: &Ui, text: &str) -> std::sync::Arc<egui::Galley> {
-    let t = Tokens::get();
+    let t = Tokens::get().
     ui.painter().layout(text.to_owned(), egui::FontId::proportional(t.font_small), t.form_dim, dimension(ui.available_width()))
 }
 
@@ -915,10 +931,10 @@ pub fn note_height(ui: &Ui, text: &str) -> f32 {
 /// time stay where they are while the words are hidden. Nothing is painted, and no handle or
 /// widget info is published: the row is not there to be found.
 pub fn hint_space(ui: &mut Ui, text: &str) {
-    let t = Tokens::get();
-    let width = dimension(ui.available_width());
-    let galley = ui.painter().layout(text.to_owned(), egui::FontId::proportional(t.font_body), t.form_dim, width);
-    ui.allocate_exact_size(vec2(width, galley.size().y), egui::Sense::hover());
+    let t = Tokens::get().
+    let width = dimension(ui.available_width()).
+    let galley = ui.painter().layout(text.to_owned(), egui::FontId::proportional(t.font_body), t.form_dim, width).
+    ui.allocate_exact_size(vec2(width, galley.size().y), egui::Sense::hover()).
 }
 
 pub fn text(ui: &mut Ui, text: &str, style: Text<'_>) -> Response {
@@ -935,7 +951,7 @@ pub fn name_cell_with_hint(ui: &mut Ui, name: &str, strong: bool, hint: &str) ->
 /// only if the cell clips it; `name` is what it reads as, the value with what it is ("Mass:
 /// 12.500 g"). True on the click that copied.
 pub fn copy_cell(ui: &mut Ui, value: &str, name: &str, mono: bool, hint: &str) -> bool {
-    let response = text_impl(ui, value, if mono { Text::MonoCell } else { Text::Cell }, Some(hint));
+    let response = text_impl(ui, value, if mono { Text::MonoCell } else { Text::Cell }, Some(hint))
     let response = if ui.stack().iter().any(|node| node.tags().contains(super::table::CELL_SELECTION)) {
         response.interact(egui::Sense::click())
     } else {
@@ -943,37 +959,37 @@ pub fn copy_cell(ui: &mut Ui, value: &str, name: &str, mono: bool, hint: &str) -
     };
     // A copy control rather than a label: it reads as a button, and keyboard focus shows a ring
     // (Enter or Space copies, as a click does).
-    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), name));
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), name))
     if response.has_focus() {
-        let t = Tokens::get();
-        ui.painter().rect_stroke(response.rect, t.radius_sm, egui::Stroke::new(1.0, t.form_primary), egui::StrokeKind::Inside);
+        let t = Tokens::get().
+        ui.painter().rect_stroke(response.rect, t.radius_sm, egui::Stroke::new(1.0, t.form_primary), egui::StrokeKind::Inside).
     }
-    let copied = response.clicked();
+    let copied = response.clicked().
     if copied {
-        ui.ctx().copy_text(value.to_owned());
+        ui.ctx().copy_text(value.to_owned()).
     }
     copied
 }
 
 fn text_impl(ui: &mut Ui, text: &str, style: Text<'_>, hover_hint: Option<&str>) -> Response {
     if super::settings_search::querying(ui) {
-        let heading = matches!(style, Text::Heading(_));
+        let heading = matches!(style, Text::Heading(_)).
         if heading {
-            let hit = super::settings_search::texts_hit(ui, &[text]);
-            super::settings_search::set_heading_open(ui, hit);
+            let hit = super::settings_search::texts_hit(ui, &[text]).
+            super::settings_search::set_heading_open(ui, hit).
             if hit {
-                super::settings_search::reveal(ui);
+                super::settings_search::reveal(ui).
             } else if super::settings_search::suppress_chrome(ui) {
-                return super::settings_search::hidden_response(ui);
+                return super::settings_search::hidden_response(ui).
             }
         } else if super::settings_search::suppress_chrome(ui) && !super::settings_search::texts_hit(ui, &[text]) {
-            return super::settings_search::hidden_response(ui);
+            return super::settings_search::hidden_response(ui).
         } else if super::settings_search::texts_hit(ui, &[text]) && !super::settings_search::shows_all(ui) {
-            super::settings_search::reveal(ui);
+            super::settings_search::reveal(ui).
         }
     }
-    let t = Tokens::get();
-    let fixed = matches!(style, Text::Cell | Text::NameCell(_) | Text::SelectedNameCell | Text::MonoCell | Text::Value(_, _));
+    let t = Tokens::get().
+    let fixed = matches!(style, Text::Cell | Text::NameCell(_) | Text::SelectedNameCell | Text::MonoCell | Text::Value(_, _)).
     let ink = match style {
         Text::Hint(_) | Text::Note(_) | Text::MonoNote(_) => t.form_dim,
         Text::Inline if in_catalog(ui) => t.form_dim,
@@ -995,97 +1011,24 @@ fn text_impl(ui: &mut Ui, text: &str, style: Text<'_>, hover_hint: Option<&str>)
     let response = if fixed {
         let (rect, response) = ui.allocate_exact_size(
             vec2(dimension(ui.available_width()), row_height()),
-            if matches!(style, Text::Value(_, _)) || ui.stack().iter().any(|node| node.tags().contains(super::table::CELL_SELECTION)) {
-                egui::Sense::hover()
-            } else {
-                egui::Sense::click()
-            },
+            egui::Sense::hover(),
         );
-        let tooltip = hover_hint.map(|hint| {
-            if ui.painter().layout_no_wrap(text.to_owned(), font.clone(), ink).size().x > rect.width() {
-                format!("{text}\n{hint}")
-            } else {
-                hint.to_owned()
-            }
-        });
-        paint_text(ui, rect, text, font, ink, false);
-        response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, ui.is_enabled(), text));
-        response.backing_on_hover_text(tooltip.as_deref().unwrap_or(text))
-    } else if matches!(style, Text::Error(_)) {
-        crate::Container::show_backing(
-            ui,
-            egui::Frame::NONE
-                .fill(t.form_error_fill)
-                .corner_radius(t.control_radius)
-                .inner_margin(egui::Margin::symmetric(t.form_inset as i8, t.space_6 as i8)),
-            |ui| {
-                ui.set_min_width(dimension(ui.available_width()));
-                ui.add(egui::Label::new(RichText::new(text).font(font).color(ink)).wrap())
-            },
-        )
-        .inner
-    } else if matches!(style, Text::Hint(_) | Text::Note(_) | Text::MonoNote(_)) {
-        let width = dimension(ui.available_width());
-        let galley = if matches!(style, Text::Note(_)) { note_galley(ui, text) } else { ui.painter().layout(text.to_owned(), font, ink, width) };
-        let padding = if matches!(style, Text::Note(_) | Text::MonoNote(_)) { t.space_4 } else { 0.0 };
-        let (rect, response) = ui.allocate_exact_size(vec2(width, galley.size().y + padding * 2.0), egui::Sense::hover());
-        ui.painter().galley(egui::pos2(rect.left(), rect.top() + padding), galley, ink);
-        response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, ui.is_enabled(), text));
+        ui.painter().galley(
+            egui::pos2(rect.left(), rect.center().y - galley.size().y / 2.0),
+            galley,
+            ink,
+        );
         response
     } else {
-        let label = egui::Label::new(RichText::new(text).font(font).color(ink));
-        ui.add(if matches!(style, Text::Inline) { label.truncate() } else { label.wrap() })
+        ui.add(
+            egui::Label::new(RichText::new(text).size(t.font_label).color(ink))
+                .wrap()
+                .show_tooltip_when_elided(hover_hint.is_none()),
+        )
     };
-    let response = if matches!(style, Text::Hint(_)) { response.backing_on_hover_text(text) } else { response };
-    let (kind, key) = match style {
-        Text::Hint(key) => ("hint", key),
-        Text::Note(key) | Text::MonoNote(key) => ("note", key),
-        Text::Report(key, _) | Text::Value(key, _) | Text::Error(key) | Text::Heading(key) => ("report", key),
-        Text::Inline => ("inline", text),
-        Text::Cell | Text::MonoCell | Text::NameCell(_) | Text::SelectedNameCell => ("cell", text),
-    };
-    let id = format!("dialog:{kind}:{key}");
-    solidcraft_ui_registry::publish_rect(&id, response.rect);
-    if matches!(style, Text::Heading(_)) {
-        super::settings_search::remember(ui, text, response.rect);
-        super::settings_search::follow(ui, text, response.rect);
+    if let Some(hint) = hover_hint {
+        response.backing_on_hover_text(hint)
+    } else {
+        response
     }
-    if !matches!(style, Text::Note(_) | Text::MonoNote(_)) {
-        solidcraft_ui_registry::publish_handle(&id, response.rect.center());
-    }
-    response
-}
-
-/// A two-line named item beside an enable checkbox and compact actions.
-/// Tokens: control_height, space_4/8/16, dialog_rule/footer, form_ink/dim, font_label/small.
-pub fn summary_row(ui: &mut Ui, name: &str, summary: &str, enabled: &mut bool, actions_width: f32, actions: impl FnOnce(&mut Ui)) -> bool {
-    let t = Tokens::get();
-    let (rect, _) = ui.allocate_exact_size(vec2(dimension(ui.available_width()), row_height() + t.space_16), egui::Sense::hover());
-    t.container_rect(ui.painter(), rect, t.radius_lg, t.dialog_body, t.dialog_rule);
-    let check = egui::Rect::from_min_size(rect.min + vec2(t.space_6, 0.0), vec2(t.space_24, rect.height()));
-    let changed = ui
-        .scope_builder(egui::UiBuilder::new().max_rect(check).layout(egui::Layout::left_to_right(egui::Align::Center)), |ui| {
-            super::checkbox(ui, "", enabled).backing_on_hover_text(solidcraft_ui_text::tr_label("Enable rule")).changed()
-        })
-        .inner;
-    let right = (rect.right() - dimension(actions_width) - t.space_6).max(check.right());
-    let text = egui::Rect::from_min_max(
-        egui::pos2(check.right() + t.space_4, rect.top()),
-        egui::pos2((right - t.space_8).max(check.right() + t.space_4), rect.bottom()),
-    );
-    let title = egui::Rect::from_min_max(text.min, egui::pos2(text.right(), text.center().y));
-    let detail = egui::Rect::from_min_max(egui::pos2(text.left(), text.center().y), text.max);
-    paint_text(ui, title, name, crate::type_face::semibold(t.font_label), t.form_ink, false);
-    paint_text(ui, detail, summary, egui::FontId::proportional(t.font_small), t.form_dim, false);
-    let response = ui.interact(text, ui.scope_id().with("summary"), egui::Sense::hover()).backing_on_hover_text(summary);
-    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, ui.is_enabled(), format!("{name}: {summary}")));
-    solidcraft_ui_registry::publish_rect(&format!("dialog:inline:{name}"), title);
-    solidcraft_ui_registry::publish_rect("dialog:report:rule_report", detail);
-    ui.scope_builder(
-        egui::UiBuilder::new()
-            .max_rect(egui::Rect::from_min_max(egui::pos2(right, rect.top()), rect.max))
-            .layout(egui::Layout::left_to_right(egui::Align::Center)),
-        actions,
-    );
-    changed
 }

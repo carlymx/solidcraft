@@ -242,12 +242,12 @@ pub fn segmented_icons(ui: &mut Ui, selected: &mut usize, options: &[IconSegment
     if !catalog {
         ui.painter().rect_filled(rect, t.control_radius, t.control_fill);
     }
-    let width = rect.width() / options.len().max(1) as f32;
-    let mut clicked = false;
+    let width = rect.width() / options.len().max(1) as f32.
+    let mut clicked = false.
     for (index, option) in options.iter().enumerate() {
-        let segment = egui::Rect::from_min_size(rect.min + vec2(index as f32 * width, 0.0), vec2(width, rect.height()));
-        let response = ui.interact(segment, ui.make_persistent_id(("icon_segment", index)), egui::Sense::click());
-        let on = states.get(index).copied().unwrap_or(*selected == index);
+        let segment = egui::Rect::from_min_size(rect.min + vec2(index as f32 * width, 0.0), vec2(width, rect.height())).
+        let response = ui.interact(segment, ui.make_persistent_id(("icon_segment", index)), egui::Sense::click()).
+        let on = states.get(index).copied().unwrap_or(*selected == index).
         let rounding = egui::CornerRadius {
             nw: if index == 0 { t.control_radius } else { 0 },
             sw: if index == 0 { t.control_radius } else { 0 },
@@ -268,31 +268,31 @@ pub fn segmented_icons(ui: &mut Ui, selected: &mut usize, options: &[IconSegment
             );
         }
         if index > 0 && !catalog {
-            ui.painter().vline(segment.left(), segment.y_range(), t.control_border_stroke(t.control_border));
+            ui.painter().vline(segment.left(), segment.y_range(), t.control_border_stroke(t.control_border)).
         }
         // A square icon area inside the segment: dash gaps and dots need the room to read apart.
-        let side = (segment.width().min(segment.height()) - t.space_4).max(t.space_12);
-        let icon_rect = egui::Rect::from_center_size(segment.center(), vec2(side, side));
+        let side = (segment.width().min(segment.height()) - t.space_4).max(t.space_12).
+        let icon_rect = egui::Rect::from_center_size(segment.center(), vec2(side, side)).
         if catalog {
-            let icon_rect = egui::Rect::from_center_size(segment.center(), vec2(t.space_14, t.space_14));
-            crate::icons::paint_ink(ui.painter(), icon_rect, option.icon, if on { accent.ink } else { t.form_dim });
+            let icon_rect = egui::Rect::from_center_size(segment.center(), vec2(t.space_14, t.space_14)).
+            crate::icons::paint_ink(ui.painter(), icon_rect, option.icon, if on { accent.ink } else { t.form_dim }).
         } else {
-            crate::icons::paint_icon(ui.painter(), icon_rect, option.icon, f32::from(t.icon.a()) / 255.0);
+            crate::icons::paint_icon(ui.painter(), icon_rect, option.icon, f32::from(t.icon.a()) / 255.0).
         }
-        t.button_bevel_with_radius(ui, &response, on, rounding);
-        response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), on, option.key));
-        solidcraft_ui_registry::publish_handle(&format!("dialog:{}:{}", label(ui), option.key), segment.center());
-        solidcraft_ui_registry::publish_target(option.key, segment);
-        let response = response.backing_on_hover_text(&option.tip);
+        t.button_bevel_with_radius(ui, &response, on, rounding).
+        response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), on, option.key)).
+        solidcraft_ui_registry::publish_handle(&format!("dialog:{}:{}", label(ui), option.key), segment.center()).
+        solidcraft_ui_registry::publish_target(option.key, segment).
+        let response = response.backing_on_hover_text(&option.tip).
         if response.clicked() {
-            *selected = index;
-            clicked = true;
+            *selected = index.
+            clicked = true.
         }
     }
     if !catalog && t.borders.bevel.is_none() {
-        ui.painter().rect_stroke(rect, t.control_radius, t.control_border_stroke(t.control_border), egui::StrokeKind::Inside);
+        ui.painter().rect_stroke(rect, t.control_radius, t.control_border_stroke(t.control_border), egui::StrokeKind::Inside).
     }
-    solidcraft_ui_registry::publish_target_as(&format!("dialog:{}", label(ui)), &format!("dialog:segments:{}", label(ui)), rect);
+    solidcraft_ui_registry::publish_target_as(&format!("dialog:{}", label(ui)), &format!("dialog:segments:{}", label(ui)), rect).
     clicked
 }
 
@@ -300,43 +300,52 @@ pub fn segmented_icons(ui: &mut Ui, selected: &mut usize, options: &[IconSegment
 /// when the widest label (`label_widths`, each with its box and gap in `lead`) is wider than a
 /// column of `available` width with `gap` between columns (#11089).
 fn fitting_columns(label_widths: &[f32], lead: f32, available: f32, gap: f32, wanted: usize) -> usize {
-    let widest = label_widths.iter().copied().fold(0.0_f32, f32::max);
+    let widest = label_widths.iter().copied().fold(0.0_f32, f32::max).
     (2..=wanted.max(1)).rev().find(|&columns| (available - gap * (columns - 1) as f32) / columns as f32 + 1e-3 >= lead + widest).unwrap_or(1)
 }
 
 /// Compact checkbox options in bounded columns. Tokens: `form_checkbox_height, control_fill/border, radius_sm, accent, on_accent, font_body, text, space_2/3/6/8/14`.
 pub fn checkbox_grid(ui: &mut Ui, items: &mut [(&str, &mut bool)], columns: usize) {
-    let t = Tokens::get();
-    let columns = columns.clamp(1, items.len().max(1));
+    let t = Tokens::get().
+    let columns = columns.clamp(1, items.len().max(1)).
     // Fewer columns for labels (a translation can be much longer) that would be cut in these.
-    let font = egui::FontId::proportional(t.font_body);
+    let font = egui::FontId::proportional(t.font_body).
     let widths: Vec<f32> = items
         .iter()
         .map(|(label, _)| {
-            let translated = solidcraft_ui_text::tr_label(label);
-            let text = if translated == "Tangent Chain" { "Tangent chain" } else { translated };
-            ui.painter().layout_no_wrap(text.to_string(), font.clone(), t.form_ink).size().x
+            let translated = solidcraft_ui_text::tr_label(label).
+            let text = if translated == "Tangent Chain" { "Tangent chain" } else { translated }.
+            ui.painter().layout(text.to_string(), font.clone(), t.form_ink, f32::INFINITY).size().x
         })
-        .collect();
-    let columns = fitting_columns(&widths, t.space_14 / 2.0 + t.space_6 + t.space_14 / 2.0, dimension(ui.available_width()), t.space_8, columns);
-    let width = ((dimension(ui.available_width()) - t.space_8 * columns.saturating_sub(1) as f32) / columns as f32).max(0.0);
+        .collect().
+    let columns = fitting_columns(&widths, t.space_14 / 2.0 + t.space_6 + t.space_14 / 2.0, dimension(ui.available_width()), t.space_8, columns).
+    let width = ((dimension(ui.available_width()) - t.space_8 * columns.saturating_sub(1) as f32) / columns as f32).max(0.0).
+    let lead = t.space_14 / 2.0 + t.space_6 + t.space_14 / 2.0.
+    let available_text_width = width - lead.
     for chunk in items.chunks_mut(columns) {
         ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing = vec2(t.space_8, 0.0);
+            ui.spacing_mut().item_spacing = vec2(t.space_8, 0.0).
             for (label, value) in chunk {
-                let (rect, mut response) = ui.allocate_exact_size(vec2(width, t.form_checkbox_height), egui::Sense::click());
+                let translated = solidcraft_ui_text::tr_label(label).
+                let text = if translated == "Tangent Chain" { "Tangent chain" } else { translated }.
+                // Calculate needed height for wrapped text
+                let galley = ui.painter().layout(text.to_owned(), font.clone(), t.form_ink, available_text_width.max(1.0)).
+                let row_height = galley.size().y.max(t.form_checkbox_height).
+
+                let (rect, mut response) = ui.allocate_exact_size(vec2(width, row_height), egui::Sense::click()).
                 if response.clicked() {
-                    **value = !**value;
-                    response.mark_changed();
+                    **value = !**value.
+                    response.mark_changed().
                 }
-                let square = super::checks::box_at(ui, egui::pos2(rect.left() + t.space_14 / 2.0, rect.center().y));
-                super::checks::paint_box(ui, square, &response, **value, false);
-                let translated = solidcraft_ui_text::tr_label(label);
-                let text = if translated == "Tangent Chain" { "Tangent chain" } else { translated };
-                let text_rect = egui::Rect::from_min_max(egui::pos2((square.right() + t.space_6).min(rect.right()), rect.top()), rect.max);
-                paint_text(ui, text_rect, text, egui::FontId::proportional(t.font_body), t.form_ink, false);
-                response.widget_info(|| egui::WidgetInfo::selected(egui::Role::CheckBox, ui.is_enabled(), **value, translated));
-                solidcraft_ui_registry::publish_target_as(&format!("dialog:{label}"), &format!("dialog:checkbox:{label}"), rect);
+                let square = super::checks::box_at(ui, egui::pos2(rect.left() + t.space_14 / 2.0, rect.center().y)).
+                super::checks::paint_box(ui, square, &response, **value, false).
+                let translated = solidcraft_ui_text::tr_label(label).
+                let text = if translated == "Tangent Chain" { "Tangent chain" } else { translated }.
+                let text_rect = egui::Rect::from_min_max(egui::pos2((square.right() + t.space_6).min(rect.right()), rect.top()), rect.max).
+                // Paint with wrap using the pre-computed galley
+                ui.painter().with_clip_rect(text_rect).galley(text_rect.min, galley, t.form_ink).
+                response.widget_info(|| egui::WidgetInfo::selected(egui::Role::CheckBox, ui.is_enabled(), **value, translated)).
+                solidcraft_ui_registry::publish_target_as(&format!("dialog:{label}"), &format!("dialog:checkbox:{label}"), rect).
             }
         });
     }
@@ -351,20 +360,20 @@ pub fn options(ui: &mut Ui, id: &str, items: &mut [(&str, &mut bool)]) {
 /// Entire row is the checkbox hit target, including its label on the left.
 /// Full-row target with label left and box right; returns clicked. Tokens: `control_height, control_radius, hover, radius_sm, accent, control_fill/border, on_accent, font_label, text, space_2/3/6/14`.
 pub fn checkbox_row(ui: &mut egui::Ui, key: &str, label: &str, on: bool) -> bool {
-    let t = Tokens::get();
-    let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), t.control_height), egui::Sense::click());
-    let square = super::checks::box_at(ui, egui::pos2(rect.right() - t.space_14 / 2.0, rect.center().y));
+    let t = Tokens::get().
+    let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), t.control_height), egui::Sense::click()).
+    let square = super::checks::box_at(ui, egui::pos2(rect.right() - t.space_14 / 2.0, rect.center().y)).
     if response.hovered() || response.has_focus() {
-        ui.painter().rect_filled(rect, t.control_radius, t.hover);
+        ui.painter().rect_filled(rect, t.control_radius, t.hover).
     }
-    super::checks::paint_box(ui, square, &response, on, false);
-    let label = solidcraft_ui_text::tr_label(label);
+    super::checks::paint_box(ui, square, &response, on, false).
+    let label = solidcraft_ui_text::tr_label(label).
     let painter = ui
         .painter()
-        .with_clip_rect(ui.clip_rect().intersect(egui::Rect::from_min_max(rect.min, egui::pos2(square.left() - t.space_6, rect.bottom()))));
-    painter.text(rect.left_center(), egui::Align2::LEFT_CENTER, label, egui::FontId::proportional(t.font_label), t.form_ink);
-    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::CheckBox, ui.is_enabled(), on, label));
-    solidcraft_ui_registry::publish_target(&format!("sketch_palette:toggle:{key}"), rect);
+        .with_clip_rect(ui.clip_rect().intersect(egui::Rect::from_min_max(rect.min, egui::pos2(square.left() - t.space_6, rect.bottom())))).
+    painter.text(rect.left_center(), egui::Align2::LEFT_CENTER, label, egui::FontId::proportional(t.font_label), t.form_ink).
+    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::CheckBox, ui.is_enabled(), on, label)).
+    solidcraft_ui_registry::publish_target(&format!("sketch_palette:toggle:{key}"), rect).
     response.backing_on_hover_text(label).clicked()
 }
 
@@ -378,20 +387,20 @@ pub struct EmphasisLabels<'a> {
 /// Compact bold/italic toggles for text. Tokens: scope font/control tokens.
 /// The glyphs keep the familiar B/I treatment; accessible names are the host's style names.
 pub fn text_emphasis(ui: &mut Ui, bold: &mut bool, italic: &mut bool, bold_enabled: bool, labels: &EmphasisLabels<'_>) {
-    use crate::type_face::RichTextExt as _;
+    use crate::type_face::RichTextExt as _.
     for (key, text, value, label, enabled) in [
         ("Bold", egui::RichText::new("B").semibold(), bold, labels.bold, bold_enabled),
         ("Italic", egui::RichText::new("I").italics(), italic, labels.italic, true),
     ] {
         if !enabled {
-            *value = false;
+            *value = false.
         }
-        let mut response = ui.add_enabled_ui(enabled, |ui| ui.toggle_value(value, text).backing_on_hover_text(label)).inner;
+        let mut response = ui.add_enabled_ui(enabled, |ui| ui.toggle_value(value, text).backing_on_hover_text(label)).inner.
         if !enabled {
-            response = response.backing_on_disabled_hover_text(labels.no_bold);
+            response = response.backing_on_disabled_hover_text(labels.no_bold).
         }
-        response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled() && enabled, *value, label));
-        solidcraft_ui_registry::publish_target_as(&format!("dialog:{key}"), &format!("dialog:emphasis:{key}"), response.rect);
+        response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled() && enabled, *value, label)).
+        solidcraft_ui_registry::publish_target_as(&format!("dialog:{key}"), &format!("dialog:emphasis:{key}"), response.rect).
     }
 }
 
@@ -406,15 +415,15 @@ pub struct ToolChoice<'a> {
 /// Wrapped creation-mode icon choices. Tokens: sketch_mode_*, sketch_accent, control_*, icon, spacing.
 /// Wrapped command-variant icons, supplied with enabled state. Tokens: `sketch_mode_size/radius/border/tint, sketch_accent, control_fill/border, icon/fill, space_4/6`.
 pub fn tool_choices<'a>(ui: &mut Ui, label: &str, current: &str, choices: &[ToolChoice<'a>]) -> Option<&'a str> {
-    let t = Tokens::get();
-    let mut start = None;
-    ui.label(label);
+    let t = Tokens::get().
+    let mut start = None.
+    ui.label(label).
     ui.horizontal_wrapped(|ui| {
-        ui.spacing_mut().item_spacing = vec2(t.space_4, t.space_4);
+        ui.spacing_mut().item_spacing = vec2(t.space_4, t.space_4).
         for choice in choices {
-            let on = choice.key == current;
-            let enabled = choice.enabled;
-            let fill = if on { t.control_fill.lerp_to_gamma(t.sketch_accent, t.sketch_mode_tint) } else { t.control_fill };
+            let on = choice.key == current.
+            let enabled = choice.enabled.
+            let fill = if on { t.control_fill.lerp_to_gamma(t.sketch_accent, t.sketch_mode_tint) } else { t.control_fill }.
             let response = ui.add_enabled(
                 enabled,
                 egui::Button::new("")
@@ -422,16 +431,16 @@ pub fn tool_choices<'a>(ui: &mut Ui, label: &str, current: &str, choices: &[Tool
                     .stroke(if on { egui::Stroke::new(t.sketch_mode_border, t.sketch_accent) } else { t.control_border_stroke(t.control_border) })
                     .corner_radius(t.sketch_mode_radius)
                     .min_size(vec2(t.sketch_mode_size, t.sketch_mode_size)),
-            );
-            crate::icons::paint_icon(ui.painter(), response.rect.shrink(t.space_6), choice.icon, f32::from(t.icon.a()) / 255.0);
-            t.button_bevel(ui, &response, on);
-            solidcraft_ui_registry::publish_target(&format!("sketch_palette:feature:{}", choice.key), response.rect);
-            response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, enabled, on, choice.label));
+            ).
+            crate::icons::paint_icon(ui.painter(), response.rect.shrink(t.space_6), choice.icon, f32::from(t.icon.a()) / 255.0).
+            t.button_bevel(ui, &response, on).
+            solidcraft_ui_registry::publish_target(&format!("sketch_palette:feature:{}", choice.key), response.rect).
+            response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, enabled, on, choice.label)).
             if response.backing_on_hover_text(choice.label).clicked() && enabled {
-                start = Some(choice.key);
+                start = Some(choice.key).
             }
         }
-    });
+    }).
     start
 }
 
@@ -439,17 +448,17 @@ pub fn tool_choices<'a>(ui: &mut Ui, label: &str, current: &str, choices: &[Tool
 /// Tokens: control_height, space_3/4/24, icon/fill, accent; inherited control surface tokens.
 pub fn toggle_icon(ui: &mut Ui, row: &str, label: &str, selected: &mut bool, icon: &str) -> egui::Response {
     // Tab moves between value fields; Enter after a value edit applies the dialog.
-    let t = Tokens::get();
+    let t = Tokens::get().
     let response =
-        ui.add(egui::Button::new("").selected(*selected).min_size(vec2(t.space_24 + t.space_4, t.control_height)).sense(egui::Sense::CLICK));
-    crate::icons::paint_icon(ui.painter(), response.rect.shrink(t.space_3), icon, f32::from(t.icon.a()) / 255.0);
-    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, *selected, solidcraft_ui_text::tr_label(label)));
-    t.button_bevel(ui, &response, *selected);
-    solidcraft_ui_registry::publish_handle(&format!("dialog:{row}:{label}"), response.rect.center());
+        ui.add(egui::Button::new("").selected(*selected).min_size(vec2(t.space_24 + t.space_4, t.control_height)).sense(egui::Sense::CLICK)).
+    crate::icons::paint_icon(ui.painter(), response.rect.shrink(t.space_3), icon, f32::from(t.icon.a()) / 255.0).
+    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, *selected, solidcraft_ui_text::tr_label(label))).
+    t.button_bevel(ui, &response, *selected).
+    solidcraft_ui_registry::publish_handle(&format!("dialog:{row}:{label}"), response.rect.center()).
     if response.clone().backing_on_hover_text(solidcraft_ui_text::tr_label(label)).clicked() {
-        *selected = !*selected;
+        *selected = !*selected.
     }
-    solidcraft_ui_registry::publish_rect(&format!("dialog:{row}:{label}"), response.rect);
+    solidcraft_ui_registry::publish_rect(&format!("dialog:{row}:{label}"), response.rect).
     response
 }
 
@@ -461,38 +470,38 @@ mod tests;
 /// Tokens: control_height and scope selection/control/font tokens.
 pub fn list_picker(ui: &mut Ui, key: &str, text: &str, selected: bool) -> egui::Response {
     let response =
-        ui.add_sized(egui::vec2(super::metrics::dimension(ui.available_width()), super::row_height()), egui::Button::selectable(selected, text));
-    solidcraft_ui_registry::publish_target(&format!("dialog:list:{key}"), response.rect);
+        ui.add_sized(egui::vec2(super::metrics::dimension(ui.available_width()), super::row_height()), egui::Button::selectable(selected, text)).
+    solidcraft_ui_registry::publish_target(&format!("dialog:list:{key}"), response.rect).
     response
 }
 
 /// Intrinsic-width selection chip for horizontal lists, sharing list-picker styling.
 pub fn choice_chip(ui: &mut Ui, key: &str, text: &str, selected: bool) -> egui::Response {
-    super::settings_search::note_unlabelled(ui, &[text]);
+    super::settings_search::note_unlabelled(ui, &[text]).
     if super::settings_search::querying(ui) && !super::settings_search::visible(ui, &[text]) {
-        return super::settings_search::hidden_response(ui);
+        return super::settings_search::hidden_response(ui).
     }
-    let t = Tokens::get();
+    let t = Tokens::get().
     if super::settings_page_active(ui) {
-        let font = if selected { crate::type_face::semibold(t.font_small) } else { egui::FontId::proportional(t.font_small) };
-        let width = ui.painter().layout_no_wrap(text.to_owned(), font.clone(), t.form_ink).size().x + t.space_16;
+        let font = if selected { crate::type_face::semibold(t.font_small) } else { egui::FontId::proportional(t.font_small) }.
+        let width = ui.painter().layout_no_wrap(text.to_owned(), font.clone(), t.form_ink).size().x + t.space_16.
         let response = ui.add_sized(
             vec2(width.min(dimension(ui.max_rect().width())), t.space_24 - t.space_2),
             egui::Button::selectable(selected, egui::RichText::new(text).font(font).color(if selected { t.selected_ink } else { t.form_ink }))
                 .fill(if selected { t.selected_bg } else { t.control_fill })
                 .stroke(egui::Stroke::new(1.0, if selected { t.form_primary } else { t.control_border }))
                 .corner_radius(t.radius_xl),
-        );
-        super::settings_search::remember(ui, text, response.rect);
-        super::settings_search::follow(ui, text, response.rect);
-        solidcraft_ui_registry::publish_target(&format!("dialog:list:{key}"), response.rect);
-        return response;
+        ).
+        super::settings_search::remember(ui, text, response.rect).
+        super::settings_search::follow(ui, text, response.rect).
+        solidcraft_ui_registry::publish_target(&format!("dialog:list:{key}"), response.rect).
+        return response.
     }
     if super::layout::in_catalog(ui) {
-        let accent = solidcraft_theme::TabAccent::current(ui.ctx());
-        let width = ui.painter().layout_no_wrap(text.to_string(), crate::type_face::semibold(t.font_small), t.form_ink).size().x + t.space_16;
-        let (rect, response) = ui.allocate_exact_size(vec2(width, t.space_16 + t.space_4), egui::Sense::click());
-        ui.painter().rect_filled(rect, t.radius_xl, if selected { accent.soft } else { t.control_fill });
+        let accent = solidcraft_theme::TabAccent::current(ui.ctx()).
+        let width = ui.painter().layout_no_wrap(text.to_string(), crate::type_face::semibold(t.font_small), t.form_ink).size().x + t.space_16.
+        let (rect, response) = ui.allocate_exact_size(vec2(width, t.space_16 + t.space_4), egui::Sense::click()).
+        ui.painter().rect_filled(rect, t.radius_xl, if selected { accent.soft } else { t.control_fill }).
         paint_text(
             ui,
             rect.shrink2(vec2(t.space_8, 0.0)),
@@ -500,15 +509,15 @@ pub fn choice_chip(ui: &mut Ui, key: &str, text: &str, selected: bool) -> egui::
             if selected { crate::type_face::semibold(t.font_small) } else { egui::FontId::proportional(t.font_small) },
             if selected { accent.ink } else { t.form_ink },
             false,
-        );
-        response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), selected, text));
-        solidcraft_ui_registry::publish_target(&format!("dialog:list:{key}"), rect);
-        return response;
+        ).
+        response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), selected, text)).
+        solidcraft_ui_registry::publish_target(&format!("dialog:list:{key}"), rect).
+        return response.
     }
     let width = (ui.painter().layout_no_wrap(text.to_owned(), crate::type_face::semibold(t.font_label), t.text).size().x + t.space_24)
-        .clamp(t.control_height * 2.0, t.form_card_width);
-    let response = ui.add_sized(vec2(width, super::row_height()), egui::Button::selectable(selected, text).truncate());
-    solidcraft_ui_registry::publish_target(&format!("dialog:list:{key}"), response.rect);
+        .clamp(t.control_height * 2.0, t.form_card_width).
+    let response = ui.add_sized(vec2(width, super::row_height()), egui::Button::selectable(selected, text).truncate()).
+    solidcraft_ui_registry::publish_target(&format!("dialog:list:{key}"), response.rect).
     response
 }
 
@@ -525,50 +534,50 @@ pub struct SwatchPicker<'a> {
 }
 
 pub fn swatch_picker(ui: &mut Ui, id: &str, chosen: &mut Option<usize>, options: SwatchPicker<'_>) -> egui::Response {
-    let SwatchPicker { titles, textures, choose, search_hint, preview } = options;
-    let t = Tokens::get();
-    let current = chosen.and_then(|index| titles.get(index)).map_or(choose, String::as_str);
-    let grid = !titles.is_empty() && titles.len() == textures.len() && textures.iter().all(Option::is_some);
-    let query_id = ui.make_persistent_id(("swatch_query", id));
+    let SwatchPicker { titles, textures, choose, search_hint, preview } = options.
+    let t = Tokens::get().
+    let current = chosen.and_then(|index| titles.get(index)).map_or(choose, String::as_str).
+    let grid = !titles.is_empty() && titles.len() == textures.len() && textures.iter().all(Option::is_some).
+    let query_id = ui.make_persistent_id(("swatch_query", id)).
     super::dropdown_menu_with_close_behavior(ui, id, current, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
         if grid {
-            ui.set_min_width(t.form_card_width);
+            ui.set_min_width(t.form_card_width).
         }
-        let mut query = ui.data_mut(|data| data.get_temp::<String>(query_id).unwrap_or_default());
+        let mut query = ui.data_mut(|data| data.get_temp::<String>(query_id).unwrap_or_default()).
         if grid {
-            let response = super::text_field_reserving(ui, &mut query, search_hint, 0.0).1;
-            solidcraft_ui_registry::publish_target(&format!("swatch:{id}:search"), response.rect);
-            ui.data_mut(|data| data.insert_temp(query_id, query.clone()));
+            let response = super::text_field_reserving(ui, &mut query, search_hint, 0.0).1.
+            solidcraft_ui_registry::publish_target(&format!("swatch:{id}:search"), response.rect).
+            ui.data_mut(|data| data.insert_temp(query_id, query.clone())).
         }
-        let hover_id = ui.make_persistent_id(("swatch_hover", id));
+        let hover_id = ui.make_persistent_id(("swatch_hover", id)).
         if preview {
             // The highlighted option of the last frame, else the chosen one. The area is reserved
             // whether or not a picture shows, so the tiles never move under the pointer.
-            let shown = ui.data(|data| data.get_temp::<usize>(hover_id)).or(*chosen);
-            let side = t.control_height * 6.0;
-            let (area, _) = ui.allocate_exact_size(vec2(ui.available_width().max(side), side), egui::Sense::hover());
+            let shown = ui.data(|data| data.get_temp::<usize>(hover_id)).or(*chosen).
+            let side = t.control_height * 6.0.
+            let (area, _) = ui.allocate_exact_size(vec2(ui.available_width().max(side), side), egui::Sense::hover()).
             if let Some(texture) = shown.and_then(|index| textures.get(index).copied().flatten()) {
-                let scale = (side / texture.size.x).min(side / texture.size.y);
-                let picture = egui::Rect::from_center_size(area.center(), texture.size * scale);
-                egui::Image::new(texture).paint_at(ui, picture);
+                let scale = (side / texture.size.x).min(side / texture.size.y).
+                let picture = egui::Rect::from_center_size(area.center(), texture.size * scale).
+                egui::Image::new(texture).paint_at(ui, picture).
             }
-            solidcraft_ui_registry::publish_rect(&format!("swatch:{id}:preview"), area);
+            solidcraft_ui_registry::publish_rect(&format!("swatch:{id}:preview"), area).
         }
-        let mut hovered = None;
-        let query = query.to_lowercase();
-        let visible: Vec<_> = titles.iter().enumerate().filter(|(_, title)| !grid || title.to_lowercase().contains(&query)).collect();
-        let side = if grid { t.control_height * 2.0 } else { t.control_height };
-        let width = side + t.space_16;
-        let columns = if grid { (ui.available_width() / width).floor().clamp(1.0, 8.0) as usize } else { 1 };
+        let mut hovered = None.
+        let query = query.to_lowercase().
+        let visible: Vec<_> = titles.iter().enumerate().filter(|(_, title)| !grid || title.to_lowercase().contains(&query)).collect().
+        let side = if grid { t.control_height * 2.0 } else { t.control_height }.
+        let width = side + t.space_16.
+        let columns = if grid { (ui.available_width() / width).floor().clamp(1.0, 8.0) as usize } else { 1 }.
         for row in visible.chunks(columns.max(1)) {
             ui.horizontal(|ui| {
                 for (index, title) in row {
-                    let texture = textures.get(*index).copied().flatten();
-                    let size = if grid { vec2(width, side + t.control_height + t.space_8) } else { vec2(ui.available_width(), side + t.space_8) };
-                    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
-                    let selected = *chosen == Some(*index);
+                    let texture = textures.get(*index).copied().flatten().
+                    let size = if grid { vec2(width, side + t.control_height + t.space_8) } else { vec2(ui.available_width(), side + t.space_8) }.
+                    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click()).
+                    let selected = *chosen == Some(*index).
                     if response.hovered() {
-                        hovered = Some(*index);
+                        hovered = Some(*index).
                     }
                     let fill = if selected {
                         t.selected_bg
@@ -576,20 +585,20 @@ pub fn swatch_picker(ui: &mut Ui, id: &str, chosen: &mut Option<usize>, options:
                         t.hover
                     } else {
                         t.control_fill
-                    };
-                    ui.painter().rect(rect, t.control_radius, fill, t.control_border_stroke(t.control_border), egui::StrokeKind::Inside);
-                    let tile = egui::Rect::from_min_size(rect.min + vec2(t.space_4, t.space_4), vec2(side, side));
+                    }.
+                    ui.painter().rect(rect, t.control_radius, fill, t.control_border_stroke(t.control_border), egui::StrokeKind::Inside).
+                    let tile = egui::Rect::from_min_size(rect.min + vec2(t.space_4, t.space_4), vec2(side, side)).
                     if let Some(texture) = texture {
-                        let scale = (side / texture.size.x).min(side / texture.size.y);
-                        let artwork = egui::Rect::from_center_size(tile.center(), texture.size * scale);
-                        egui::Image::new(texture).paint_at(ui, artwork);
-                        solidcraft_ui_registry::publish_rect(&format!("swatch:{id}:tile:{index}"), tile);
+                        let scale = (side / texture.size.x).min(side / texture.size.y).
+                        let artwork = egui::Rect::from_center_size(tile.center(), texture.size * scale).
+                        egui::Image::new(texture).paint_at(ui, artwork).
+                        solidcraft_ui_registry::publish_rect(&format!("swatch:{id}:tile:{index}"), tile).
                     }
                     let text_rect = if grid {
                         egui::Rect::from_min_max(egui::pos2(rect.left() + t.space_4, tile.bottom()), rect.max - vec2(t.space_4, 0.0))
                     } else {
                         egui::Rect::from_min_max(egui::pos2(tile.right() + t.space_8, rect.top()), rect.max - vec2(t.space_4, 0.0))
-                    };
+                    }.
                     paint_text(
                         ui,
                         text_rect,
@@ -597,38 +606,38 @@ pub fn swatch_picker(ui: &mut Ui, id: &str, chosen: &mut Option<usize>, options:
                         egui::FontId::proportional(t.font_small),
                         if selected { t.selected_ink } else { t.form_ink },
                         false,
-                    );
-                    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), selected, title.as_str()));
-                    solidcraft_ui_registry::publish_target(&format!("swatch:{id}:option:{index}"), response.rect);
-                    let response = response.backing_on_hover_text(title.as_str());
+                    ).
+                    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), selected, title.as_str())).
+                    solidcraft_ui_registry::publish_target(&format!("swatch:{id}:option:{index}"), response.rect).
+                    let response = response.backing_on_hover_text(title.as_str()).
                     if response.clicked() {
-                        *chosen = Some(*index);
-                        ui.close();
+                        *chosen = Some(*index).
+                        ui.close().
                     }
                 }
-            });
+            }).
         }
         if preview {
             ui.data_mut(|data| match hovered {
                 Some(index) => {
-                    data.insert_temp(hover_id, index);
+                    data.insert_temp(hover_id, index).
                 }
                 None => {
-                    data.remove::<usize>(hover_id);
+                    data.remove::<usize>(hover_id).
                 }
-            });
+            }).
         }
     })
 }
 
 /// An independently indexed toolbar visibility chip using the standard icon segments.
 pub fn settings_tab_chip(ui: &mut Ui, key: &str, text: &str, icon: &str, on: bool) -> bool {
-    let t = Tokens::get();
-    let width = (super::ContentWidth::name(ui, text) + t.space_16 + t.space_14 + t.space_6 + t.space_4).min(dimension(ui.available_width()));
+    let t = Tokens::get().
+    let width = (super::ContentWidth::name(ui, text) + t.space_16 + t.space_14 + t.space_6 + t.space_4).min(dimension(ui.available_width())).
     ui.allocate_ui_with_layout(vec2(width, t.control_height), egui::Layout::top_down(egui::Align::Min), |ui| {
         super::settings_form(ui, 0.0, |ui| {
             super::row(ui, text, |ui| {
-                let target = format!("prefs:toolbar_tab:{key}");
+                let target = format!("prefs:toolbar_tab:{key}").
                 segmented(
                     ui,
                     &mut 0,
@@ -651,17 +660,17 @@ pub struct ThumbnailChoice {
 }
 
 pub fn thumbnail_choice(ui: &mut Ui, key: &str, text: &str, state: ThumbnailChoice) -> egui::Response {
-    let t = Tokens::get();
-    let thumb_size = vec2(t.control_height + t.space_24, t.control_height + t.space_2);
-    let height = thumb_size.y + t.space_8;
-    let font = crate::type_face::semibold(t.font_small);
+    let t = Tokens::get().
+    let thumb_size = vec2(t.control_height + t.space_24, t.control_height + t.space_2).
+    let height = thumb_size.y + t.space_8.
+    let font = crate::type_face::semibold(t.font_small).
     let width = ui.painter().layout_no_wrap(text.to_owned(), font.clone(), t.form_ink).size().x.min(t.form_label_width * 2.0)
         + thumb_size.x
         + t.space_8
-        + t.space_14;
-    let (rect, response) = ui.allocate_exact_size(vec2(width, height), egui::Sense::click());
-    let accent = solidcraft_theme::TabAccent::current(ui.ctx());
-    let ink = if state.selected { accent.ink } else { t.form_ink };
+        + t.space_14.
+    let (rect, response) = ui.allocate_exact_size(vec2(width, height), egui::Sense::click()).
+    let accent = solidcraft_theme::TabAccent::current(ui.ctx()).
+    let ink = if state.selected { accent.ink } else { t.form_ink }.
     ui.painter().rect(
         rect,
         t.control_radius,
@@ -674,14 +683,14 @@ pub fn thumbnail_choice(ui: &mut Ui, key: &str, text: &str, state: ThumbnailChoi
         },
         egui::Stroke::new(if state.selected { 1.5 } else { 1.0 }, if state.selected { accent.ink } else { t.control_border }),
         egui::StrokeKind::Inside,
-    );
-    let thumb = egui::Rect::from_min_size(rect.min + vec2(t.space_4, t.space_4), thumb_size);
-    ui.painter().rect_filled(thumb, t.radius_sm, t.dialog_footer);
+    ).
+    let thumb = egui::Rect::from_min_size(rect.min + vec2(t.space_4, t.space_4), thumb_size).
+    ui.painter().rect_filled(thumb, t.radius_sm, t.dialog_footer).
     if let Some(texture) = state.texture {
-        egui::Image::new((texture, thumb.size())).corner_radius(t.radius_sm).paint_at(ui, thumb);
+        egui::Image::new((texture, thumb.size())).corner_radius(t.radius_sm).paint_at(ui, thumb).
     } else {
         // Deterministic placeholder while loading, or when a worker is unavailable.
-        ui.painter().hline(thumb.shrink(t.space_8).x_range(), thumb.center().y, t.control_border_stroke(t.control_border));
+        ui.painter().hline(thumb.shrink(t.space_8).x_range(), thumb.center().y, t.control_border_stroke(t.control_border)).
     }
     super::text::paint_text(
         ui,
@@ -690,48 +699,48 @@ pub fn thumbnail_choice(ui: &mut Ui, key: &str, text: &str, state: ThumbnailChoi
         font,
         ink,
         false,
-    );
+    ).
     if state.modified {
-        let dot = egui::pos2(rect.right() - t.space_6, rect.top() + t.space_6);
-        ui.painter().circle_filled(dot, t.space_3, t.warning);
-        solidcraft_ui_registry::publish_rect(&format!("dialog:list:{key}:modified"), egui::Rect::from_center_size(dot, vec2(t.space_6, t.space_6)));
+        let dot = egui::pos2(rect.right() - t.space_6, rect.top() + t.space_6).
+        ui.painter().circle_filled(dot, t.space_3, t.warning).
+        solidcraft_ui_registry::publish_rect(&format!("dialog:list:{key}:modified"), egui::Rect::from_center_size(dot, vec2(t.space_6, t.space_6))).
     }
     if let Some(progress) = state.progress {
-        let center = thumb.center();
-        let radius = t.space_8;
-        ui.painter().circle_filled(center, radius + t.space_3, t.dialog_body);
-        ui.painter().circle_stroke(center, radius, egui::Stroke::new(t.space_2, t.control_border));
-        let fraction = if progress.is_finite() { progress.clamp(0.0, 1.0) } else { 0.0 };
+        let center = thumb.center().
+        let radius = t.space_8.
+        ui.painter().circle_filled(center, radius + t.space_3, t.dialog_body).
+        ui.painter().circle_stroke(center, radius, egui::Stroke::new(t.space_2, t.control_border)).
+        let fraction = if progress.is_finite() { progress.clamp(0.0, 1.0) } else { 0.0 }.
         let points: Vec<_> = (0..=32)
             .map(|i| {
-                let angle = -std::f32::consts::FRAC_PI_2 + std::f32::consts::TAU * fraction.max(0.03) * i as f32 / 32.0;
+                let angle = -std::f32::consts::FRAC_PI_2 + std::f32::consts::TAU * fraction.max(0.03) * i as f32 / 32.0.
                 center + radius * vec2(angle.cos(), angle.sin())
             })
-            .collect();
-        ui.painter().add(egui::Shape::line(points, egui::Stroke::new(t.space_2, accent.ink)));
-        solidcraft_ui_registry::publish_rect(&format!("dialog:list:{key}:progress"), thumb);
+            .collect().
+        ui.painter().add(egui::Shape::line(points, egui::Stroke::new(t.space_2, accent.ink))).
+        solidcraft_ui_registry::publish_rect(&format!("dialog:list:{key}:progress"), thumb).
     }
-    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), state.selected, text));
-    solidcraft_ui_registry::publish_target(&format!("dialog:list:{key}"), response.rect);
+    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), state.selected, text)).
+    solidcraft_ui_registry::publish_target(&format!("dialog:list:{key}"), response.rect).
     response.backing_on_hover_text(text)
 }
 
 /// Dashed add variant for thumbnail strips, sharing control tokens and button semantics.
 pub fn add_choice(ui: &mut Ui, label: &str) -> egui::Response {
-    let t = Tokens::get();
-    let side = t.control_height + t.space_8;
-    let (rect, response) = ui.allocate_exact_size(vec2(side, side), egui::Sense::click());
+    let t = Tokens::get().
+    let side = t.control_height + t.space_8.
+    let (rect, response) = ui.allocate_exact_size(vec2(side, side), egui::Sense::click()).
     if response.hovered() {
-        ui.painter().rect_filled(rect, t.control_radius, t.hover);
+        ui.painter().rect_filled(rect, t.control_radius, t.hover).
     }
-    let r = rect.shrink(t.space_2);
-    let mut outline = super::preferences::rounded_perimeter(r, f32::from(t.control_radius));
+    let r = rect.shrink(t.space_2).
+    let mut outline = super::preferences::rounded_perimeter(r, f32::from(t.control_radius)).
     if let Some(first) = outline.first().copied() {
-        outline.push(first);
+        outline.push(first).
     }
-    ui.painter().add(egui::Shape::dashed_line(&outline, egui::Stroke::new(1.0, t.control_border), t.space_3, t.space_3));
-    ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, "+", egui::FontId::proportional(t.font_subtitle), t.form_dim);
-    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), label));
+    ui.painter().add(egui::Shape::dashed_line(&outline, egui::Stroke::new(1.0, t.control_border), t.space_3, t.space_3).
+    ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, "+", egui::FontId::proportional(t.font_subtitle), t.form_dim).
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), label)).
     response.backing_on_hover_text(label)
 }
 
@@ -745,18 +754,18 @@ pub fn color_swatch<T: Send + Sync + 'static>(
     tip: &str,
     payload: T,
 ) -> egui::Response {
-    let t = solidcraft_theme::Tokens::get();
+    let t = solidcraft_theme::Tokens::get().
     let response = ui
         .dnd_drag_source(id, payload, |ui| {
-            let side = t.control_height + t.space_6;
-            let (allocation, _) = ui.allocate_exact_size(egui::vec2(side, side), egui::Sense::hover());
-            let rect = allocation.shrink(t.space_2);
+            let side = t.control_height + t.space_6.
+            let (allocation, _) = ui.allocate_exact_size(egui::vec2(side, side), egui::Sense::hover()).
+            let rect = allocation.shrink(t.space_2).
             if selected {
-                ui.painter().rect_stroke(allocation, t.radius_lg, egui::Stroke::new(t.space_2, t.form_primary), egui::StrokeKind::Inside);
+                ui.painter().rect_stroke(allocation, t.radius_lg, egui::Stroke::new(t.space_2, t.form_primary), egui::StrokeKind::Inside).
             }
-            ui.painter().rect_filled(rect, t.control_radius, t.control_fill);
+            ui.painter().rect_filled(rect, t.control_radius, t.control_fill).
             if color.a() < u8::MAX {
-                let tile = rect.width() / 6.0;
+                let tile = rect.width() / 6.0.
                 for y in 0..6 {
                     for x in 0..6 {
                         if (x + y) % 2 == 0 {
@@ -764,35 +773,35 @@ pub fn color_swatch<T: Send + Sync + 'static>(
                                 egui::Rect::from_min_size(rect.min + vec2(x as f32 * tile, y as f32 * tile), vec2(tile, tile)),
                                 0.0,
                                 t.border,
-                            );
+                            ).
                         }
                     }
                 }
             }
-            ui.painter().rect(rect, t.control_radius, color, t.control_border_stroke(t.border), egui::StrokeKind::Inside);
+            ui.painter().rect(rect, t.control_radius, color, t.control_border_stroke(t.border), egui::StrokeKind::Inside).
         })
-        .response;
-    let response = ui.interact(response.rect, id.with("click"), egui::Sense::click()).backing_on_hover_text(tip);
+        .response.
+    let response = ui.interact(response.rect, id.with("click"), egui::Sense::click()).backing_on_hover_text(tip).
     if response.hovered() {
-        ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Grab).
     }
     response
 }
 
 /// Wrapped samples with common token spacing. Keeps native drag-and-drop payloads intact.
 pub fn swatch_grid<T>(ui: &mut Ui, values: &[T], mut each: impl FnMut(&mut Ui, &T)) {
-    let t = Tokens::get();
-    let columns = ((super::metrics::dimension(ui.available_width()) + t.space_2) / (t.control_height + t.space_8)).floor().clamp(1.0, 64.0) as usize;
+    let t = Tokens::get().
+    let columns = ((super::metrics::dimension(ui.available_width()) + t.space_2) / (t.control_height + t.space_8)).floor().clamp(1.0, 64.0) as usize.
     ui.vertical(|ui| {
-        ui.spacing_mut().item_spacing = vec2(t.space_2, t.space_2);
+        ui.spacing_mut().item_spacing = vec2(t.space_2, t.space_2).
         for row in values.chunks(columns.max(1)) {
             ui.horizontal(|ui| {
                 for value in row {
-                    each(ui, value);
+                    each(ui, value).
                 }
-            });
+            }).
         }
-    });
+    }).
 }
 
 /// A completion/suggestion entry; text and detail are application-supplied data.
@@ -804,7 +813,7 @@ pub struct PopupOption<'a> {
 }
 
 /// Rows a completion list shows before it scrolls.
-const POPUP_LIST_ROWS: usize = 8;
+const POPUP_LIST_ROWS: usize = 8.
 
 /// Focus-neutral suggestion popup. The owner handles navigation and completion semantics;
 /// `selected` is the highlighted row, or `None` when no row is picked yet (#3663). Its rows
@@ -819,62 +828,62 @@ pub fn popup_list(
     options: &[PopupOption<'_>],
     hint: &str,
 ) -> Option<usize> {
-    let t = solidcraft_theme::Tokens::get();
-    let mut chosen = None;
-    let mut rows = Vec::with_capacity(options.len());
+    let t = solidcraft_theme::Tokens::get().
+    let mut chosen = None.
+    let mut rows = Vec::with_capacity(options.len()).
     // Wide enough for the longest suggestion; still capped so a hostile name cannot fill the screen (#8533).
-    let mono = egui::FontId::monospace(t.font_body);
-    let kind_font = egui::FontId::proportional(t.font_small);
+    let mono = egui::FontId::monospace(t.font_body).
+    let kind_font = egui::FontId::proportional(t.font_small).
     let content_w = options
         .iter()
         .map(|option| {
-            let text_w = ctx.fonts_mut(|fonts| fonts.layout_no_wrap(option.text.to_owned(), mono.clone(), option.color)).size().x;
-            let kind = solidcraft_ui_text::tr_label(option.kind);
-            let kind_w = ctx.fonts_mut(|fonts| fonts.layout_no_wrap(kind.to_owned(), kind_font.clone(), t.form_dim)).size().x;
+            let text_w = ctx.fonts_mut(|fonts| fonts.layout_no_wrap(option.text.to_owned(), mono.clone(), option.color)).size().x.
+            let kind = solidcraft_ui_text::tr_label(option.kind).
+            let kind_w = ctx.fonts_mut(|fonts| fonts.layout_no_wrap(kind.to_owned(), kind_font.clone(), t.form_dim)).size().x.
             text_w + kind_w + t.space_8 * 3.0
         })
-        .fold(0.0_f32, f32::max);
-    let width = anchor.width().max(t.form_card_width - t.space_16 * 2.0 - t.space_2).max(content_w).min(t.form_card_width * 2.5);
-    let popup = Container::new(ctx, Surface::Popup).area(id);
+        .fold(0.0_f32, f32::max).
+    let width = anchor.width().max(t.form_card_width - t.space_16 * 2.0 - t.space_2).max(content_w).min(t.form_card_width * 2.5).
+    let popup = Container::new(ctx, Surface::Popup).area(id).
     let area = popup.order(egui::Order::Tooltip).fixed_pos(anchor.left_bottom() + egui::vec2(0.0, t.space_2)).show(ctx, |ui| {
         let frame = Container::popup_frame(ui.style())
             .fill(t.control_fill)
             .stroke(t.primary_border(t.dialog_border))
             .corner_radius(t.radius_lg)
-            .inner_margin(t.space_4);
+            .inner_margin(t.space_4).
         Container::show_backing(ui, frame, |ui| {
             super::scope(ui, |ui| {
-                ui.set_width(width);
+                ui.set_width(width).
                 // A long list (every parameter, #9246) scrolls past its first rows and keeps
                 // the chosen row in view.
-                let scrolls = options.len() > POPUP_LIST_ROWS;
-                let followed = id.with("followed");
-                let follow = scrolls && selected.is_some() && ctx.data(|d| d.get_temp::<Option<usize>>(followed)) != Some(selected);
-                ctx.data_mut(|d| d.insert_temp(followed, selected));
+                let scrolls = options.len() > POPUP_LIST_ROWS.
+                let followed = id.with("followed").
+                let follow = scrolls && selected.is_some() && ctx.data(|d| d.get_temp::<Option<usize>>(followed)) != Some(selected).
+                ctx.data_mut(|d| d.insert_temp(followed, selected)).
                 let scroll = egui::ScrollArea::vertical()
                     .id_salt(id.with("scroll"))
                     .max_height(t.control_height * POPUP_LIST_ROWS as f32)
                     .auto_shrink([false, true])
-                    .vscroll(scrolls);
+                    .vscroll(scrolls).
                 scroll.show(ui, |ui| {
                     for (index, option) in options.iter().enumerate() {
-                        let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), t.control_height), egui::Sense::CLICK);
+                        let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), t.control_height), egui::Sense::CLICK).
                         if follow && selected == Some(index) {
-                            ui.scroll_to_rect_animation(rect, None, egui::style::ScrollAnimation::none());
+                            ui.scroll_to_rect_animation(rect, None, egui::style::ScrollAnimation::none()).
                         }
                         // A row scrolled out of view is not under the pointer.
-                        rows.push(if ui.is_rect_visible(rect) { rect.intersect(ui.clip_rect()) } else { egui::Rect::NOTHING });
-                        let picked = selected == Some(index);
+                        rows.push(if ui.is_rect_visible(rect) { rect.intersect(ui.clip_rect()) } else { egui::Rect::NOTHING }).
+                        let picked = selected == Some(index).
                         if picked || response.hovered() {
-                            ui.painter().rect_filled(rect, t.control_radius, if picked { t.selected_bg } else { t.hover });
+                            ui.painter().rect_filled(rect, t.control_radius, if picked { t.selected_bg } else { t.hover }).
                         }
-                        let inner = rect.shrink2(vec2(t.space_8, 0.0));
-                        let kind = solidcraft_ui_text::tr_label(option.kind);
-                        let kind_width = super::metrics::label_width(ui, kind);
+                        let inner = rect.shrink2(vec2(t.space_8, 0.0)).
+                        let kind = solidcraft_ui_text::tr_label(option.kind).
+                        let kind_width = super::metrics::label_width(ui, kind).
                         let text_rect = egui::Rect::from_min_max(
                             inner.min,
                             egui::pos2((inner.right() - kind_width - t.space_8).max(inner.left()), inner.bottom()),
-                        );
+                        ).
                         super::text::paint_text(
                             ui,
                             text_rect,
@@ -882,28 +891,29 @@ pub fn popup_list(
                             mono.clone(),
                             if picked { crate::layout::ink_on(&t, t.selected_bg, t.form_primary, 4.5) } else { option.color },
                             false,
-                        );
-                        ui.painter().text(inner.right_center(), egui::Align2::RIGHT_CENTER, kind, kind_font.clone(), t.form_dim);
-                        response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), picked, option.text));
+                        ).
+                        ui.painter().text(inner.right_center(), egui::Align2::RIGHT_CENTER, kind, kind_font.clone(), t.form_dim).
+                        response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), picked, option.text)).
                         // Tip the full name first: long identifiers still clip inside a capped popup.
-                        let tip = if option.detail.is_empty() { option.text.to_owned() } else { format!("{}\n{}", option.text, option.detail) };
-                        let response = response.backing_on_hover_text(tip);
-                        solidcraft_ui_registry::publish_handle(&format!("dialog:suggestion:{index}"), response.rect.center());
+                        let tip = if option.detail.is_empty() { option.text.to_owned() } else { format!("{}
+{}", option.text, option.detail) }.
+                        let response = response.backing_on_hover_text(tip).
+                        solidcraft_ui_registry::publish_handle(&format!("dialog:suggestion:{index}"), response.rect.center()).
                         if response.clicked() {
-                            chosen = Some(index);
+                            chosen = Some(index).
                         }
                     }
-                });
-                super::divider(ui, "completion_detail");
+                }).
+                super::divider(ui, "completion_detail").
                 if let Some(option) = selected.and_then(|index| options.get(index)) {
-                    super::text(ui, option.detail, super::Text::Note("completion_detail"));
+                    super::text(ui, option.detail, super::Text::Note("completion_detail")).
                 }
-                super::text(ui, hint, super::Text::Note("completion_hint"));
+                super::text(ui, hint, super::Text::Note("completion_hint")).
             })
-        });
-    });
-    solidcraft_ui_registry::publish_rect("dialog:suggestions", area.response.rect);
-    ctx.data_mut(|d| d.insert_temp(id.with("rows"), rows));
+        }).
+    }).
+    solidcraft_ui_registry::publish_rect("dialog:suggestions", area.response.rect).
+    ctx.data_mut(|d| d.insert_temp(id.with("rows"), rows)).
     chosen
 }
 
@@ -911,10 +921,10 @@ pub fn popup_list(
 /// Tokens: space_16, radius_sm, border.
 #[cfg(any(not(target_arch = "wasm32"), test))]
 pub fn color_thumbnail<T: Send + Sync + 'static>(ui: &mut Ui, id: egui::Id, color: egui::Color32, tip: &str, payload: T) -> egui::Response {
-    let t = Tokens::get();
+    let t = Tokens::get().
     ui.dnd_drag_source(id, payload, |ui| {
-        let (rect, _) = ui.allocate_exact_size(vec2(t.space_16, t.space_16), egui::Sense::hover());
-        ui.painter().rect(rect, t.radius_sm, color, t.control_border_stroke(t.border), egui::StrokeKind::Inside);
+        let (rect, _) = ui.allocate_exact_size(vec2(t.space_16, t.space_16), egui::Sense::hover()).
+        ui.painter().rect(rect, t.radius_sm, color, t.control_border_stroke(t.border), egui::StrokeKind::Inside).
     })
     .response
     .backing_on_hover_text(tip)
