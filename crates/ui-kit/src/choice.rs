@@ -378,26 +378,32 @@ pub fn checkbox_grid(ui: &mut Ui, items: &mut [(&str, &mut bool)], columns: usiz
         .map(|(label, _)| {
             let translated = solidcraft_ui_text::tr_label(label);
             let text = if translated == "Tangent Chain" { "Tangent chain" } else { translated };
-            ui.painter().layout_no_wrap(text.to_string(), font.clone(), t.form_ink).size().x
+            ui.painter().layout(text.to_string(), font.clone(), t.form_ink, f32::INFINITY).size().x
         })
         .collect();
     let columns = fitting_columns(&widths, t.space_14 / 2.0 + t.space_6 + t.space_14 / 2.0, dimension(ui.available_width()), t.space_8, columns);
     let width = ((dimension(ui.available_width()) - t.space_8 * columns.saturating_sub(1) as f32) / columns as f32).max(0.0);
+    let lead = t.space_14 / 2.0 + t.space_6 + t.space_14 / 2.0;
+    let available_text_width = width - lead;
     for chunk in items.chunks_mut(columns) {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing = vec2(t.space_8, 0.0);
             for (label, value) in chunk {
-                let (rect, mut response) = ui.allocate_exact_size(vec2(width, t.form_checkbox_height), egui::Sense::click());
+                let translated = solidcraft_ui_text::tr_label(label);
+                let text = if translated == "Tangent Chain" { "Tangent chain" } else { translated };
+                // A translation wraps inside its column, and the row grows to fit the wrapped lines.
+                let galley = ui.painter().layout(text.to_owned(), font.clone(), t.form_ink, available_text_width.max(1.0));
+                let row_height = galley.size().y.max(t.form_checkbox_height);
+                let (rect, mut response) = ui.allocate_exact_size(vec2(width, row_height), egui::Sense::click());
                 if response.clicked() {
                     **value = !**value;
                     response.mark_changed();
                 }
                 let square = super::checks::box_at(ui, egui::pos2(rect.left() + t.space_14 / 2.0, rect.center().y));
                 super::checks::paint_box(ui, square, &response, **value, false);
-                let translated = solidcraft_ui_text::tr_label(label);
-                let text = if translated == "Tangent Chain" { "Tangent chain" } else { translated };
                 let text_rect = egui::Rect::from_min_max(egui::pos2((square.right() + t.space_6).min(rect.right()), rect.top()), rect.max);
-                paint_text(ui, text_rect, text, egui::FontId::proportional(t.font_body), t.form_ink, false);
+                let at = egui::pos2(text_rect.left(), text_rect.center().y - galley.size().y / 2.0);
+                ui.painter().with_clip_rect(ui.clip_rect().intersect(text_rect)).galley(at, galley, t.form_ink);
                 response.widget_info(|| egui::WidgetInfo::selected(egui::Role::CheckBox, ui.is_enabled(), **value, translated));
                 solidcraft_ui_registry::publish_target_as(&format!("dialog:{label}"), &format!("dialog:checkbox:{label}"), rect);
             }

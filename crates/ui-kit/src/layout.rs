@@ -423,21 +423,27 @@ fn row_with<R>(ui: &mut Ui, text: &str, height: f32, scrub: bool, control: impl 
 fn sized_row_body<R>(ui: &mut Ui, text: &str, height: f32, scrub: bool, control: impl FnOnce(&mut Ui, Option<&Response>) -> R) -> R {
     let t = Tokens::get();
     let width = dimension(ui.available_width());
-    let (rect, _) = ui.allocate_exact_size(vec2(width, height), egui::Sense::hover());
-    super::settings_search::remember(ui, text, rect);
-    super::settings_search::follow(ui, text, rect);
     // A nested row (`"  Of"`) lines up under the one above: the lookup uses the text without its
     // indent and the indent stays in front of the translation. The `LABEL` tag keeps the original.
     let shown = indented_label(text);
     // Measuring takes the original text and prepares it the same way, so column and row agree.
     let label_width = label_column(ui, text, width);
-    let label_rect = egui::Rect::from_min_size(rect.min, vec2(label_width, rect.height()));
     let help = ui.stack().iter().find_map(|node| node.tags().get_downcast::<String>(super::preferences_small::ROW_HELP)).cloned();
     let tooltip = ui.stack().iter().find_map(|node| node.tags().get_downcast::<String>(LABEL_TOOLTIP)).cloned();
+    // A translation can be longer than its column: the label wraps there instead of being elided,
+    // and the row grows so the wrapped lines fit. A help icon takes its share of the column.
+    let max_label_width = label_width.max(1.0);
+    let label_text_width = if help.is_some() { (max_label_width - t.space_16 - t.space_4).max(1.0) } else { max_label_width };
+    let label_height = ui.painter().layout(shown.clone(), egui::FontId::proportional(t.font_label), t.dialog_label, label_text_width).size().y;
+    let adjusted_height = height.max(label_height.max(t.control_height) + t.space_4);
+    let (rect, _) = ui.allocate_exact_size(vec2(width, adjusted_height), egui::Sense::hover());
+    super::settings_search::remember(ui, text, rect);
+    super::settings_search::follow(ui, text, rect);
+    let label_rect = egui::Rect::from_min_size(rect.min, vec2(label_width, rect.height()));
     let add_label = |ui: &mut Ui| {
         let response = ui.add(
             egui::Label::new(RichText::new(shown.clone()).size(t.font_label).color(t.dialog_label))
-                .truncate()
+                .wrap()
                 .show_tooltip_when_elided(tooltip.is_none()),
         );
         response.backing_on_hover_text(tooltip.as_deref().unwrap_or(&shown))
@@ -451,7 +457,7 @@ fn sized_row_body<R>(ui: &mut Ui, text: &str, height: f32, scrub: bool, control:
                 let label = ui
                     .scope_builder(
                         egui::UiBuilder::new()
-                            .max_rect(egui::Rect::from_min_size(label_rect.min, vec2(width, height)))
+                            .max_rect(egui::Rect::from_min_size(label_rect.min, vec2(width, adjusted_height)))
                             .layout(egui::Layout::left_to_right(egui::Align::Center)),
                         add_label,
                     )
