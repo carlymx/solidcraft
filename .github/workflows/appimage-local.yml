@@ -1,0 +1,67 @@
+# Fork-local AppImage build: runs on GitHub's hosted ubuntu-22.04 runner, without
+# test-build.yml's `repository_owner == 'tangency-labs'` gate and without Blacksmith
+# runners (unavailable on a fork). Nothing here is a release: the version carries the
+# -test+<sha> suffix (the in-app updater treats it as a development build) and the
+# artifact is kept for 7 days.
+#
+# Triggers: a push to build/** (the branch this file rides on), or Run workflow with
+# a ref. Packaging is the release workflow's own script (packaging/linux/package.sh).
+name: Local AppImage
+
+on:
+  push:
+    branches: ["build/**"]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag or SHA to build"
+        type: string
+        default: main
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  appimage:
+    name: Linux x86_64 AppImage
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref_name }}
+          persist-credentials: false
+      - name: Version (test build)
+        id: v
+        run: |
+          set -euo pipefail
+          base="$(awk '/^\[/ { p = ($0 == "[workspace.package]"); next } p && $1 == "version" { gsub(/[" ]/, "", $3); print $3; exit }' Cargo.toml)"
+          case "$base" in [0-9]*.[0-9]*.[0-9]*) ;; *) echo "::error::Could not read the version from Cargo.toml"; exit 1 ;; esac
+          short="$(git rev-parse --short=7 HEAD)"
+          echo "version=${base%%-*}-test+$short" >>"$GITHUB_OUTPUT"
+          echo "short=$short" >>"$GITHUB_OUTPUT"
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends desktop-file-utils appstream zsync
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: release-linux-x86_64
+          save-if: false
+      - name: Build and package (AppImage)
+        env:
+          SOLIDCRAFT_VERSION: ${{ steps.v.outputs.version }}
+        run: packaging/linux/package.sh --formats appimage
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: solidcraft-${{ steps.v.outputs.short }}-linux-appimage
+          path: dist/release/*.AppImage
+          retention-days: 7
+          if-no-files-found: error
