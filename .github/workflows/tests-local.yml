@@ -1,0 +1,61 @@
+# Fork-local tests: format, Clippy and the unit tests of the crates the label-wrap
+# change touches, on GitHub's hosted ubuntu-24.04 runner (the same image the CI
+# workflow's fork instructions name). Nothing here needs Blacksmith runners or
+# repository variables, which a fork's token cannot create.
+#
+# Triggers: a push to build/** or test/**, or Run workflow with a ref.
+name: Local tests
+
+on:
+  push:
+    branches: ["build/**", "test/**"]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag or SHA to test"
+        type: string
+        default: main
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  format:
+    name: Format
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref_name }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          components: rustfmt
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+  tests:
+    name: Clippy and unit tests (ui-kit, ui-text)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref_name }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: tests-ui-kit
+          save-if: true
+      - name: Clippy (-D warnings)
+        run: cargo clippy -p solidcraft-ui-kit -p solidcraft-ui-text --all-targets --locked -- -D warnings
+      - name: Unit tests
+        run: cargo test -p solidcraft-ui-kit -p solidcraft-ui-text --locked
